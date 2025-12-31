@@ -1,0 +1,4 @@
+trade_id,entry_time,exit_time,duration_minutes,direction,entry_price,exit_price,stop_loss,take_profit,exit_reason,pnl,pnl_pct,risk_reward_achieved,max_profit_pct,max_loss_pct,candles_in_trade,position_size,commission,swap,net_pnl
+1,2025-12-29 15:03:33.299817,2025-12-29 15:03:33.299897,0.0,BUY,2050.0,2053.8,2048.0,2054.0,TP hit,38.0,0.19,1.9,0.17,0,3,0.1,0,0,38.0
+2,2025-12-29 15:03:33.304214,2025-12-29 15:03:33.304269,0.0,SELL,2050.0,2052.45,2052.5,2046.0,SL hit,-12.25,-0.12,-0.98,0,-0.11,2,0.05,0,0,-12.25
+3,2025-12-29 15:03:33.307571,2025-12-29 15:03:33.307620,0.0,BUY,2050.0,2049.2,2048.0,2054.0,Early exit - EMA crossback,-1.6,-0.04,-0.4,0,-0.05,2,0.02,0,0,-1.6
