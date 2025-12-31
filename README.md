@@ -1,86 +1,75 @@
-📌 Project Title
+📌 Nur Trading Agent
+MT5 EMA200 Algorithmic Trading Prototype (Python ↔ MQL5)
+🧠 Project Overview
 
-MT5 EMA200 Trading Prototype (Python ↔ MQL5 Bridge)
+Nur Trading Agent is a working prototype of an algorithmic trading system designed to demonstrate how Python-based trading logic can be safely and cleanly integrated with MetaTrader 5 (MT5) using an official Expert Advisor (EA) execution layer.
 
-🧠 Project Description
+The project follows a separation-of-concerns architecture, where:
 
-This repository contains a working prototype of an algorithmic trading system for MetaTrader 5 (MT5) built using a Python ↔ MQL5 bridge architecture.
+Python handles decision-making and strategy logic
 
-The system demonstrates how Python-based strategy logic can interact with MT5 Expert Advisors in real time without using any unofficial or unsafe APIs.
+MT5 (MQL5 EA) handles market data access and trade execution
 
-The prototype focuses on a single, clear strategy:
+This ensures stability, safety, and compliance with MT5’s design principles.
 
-EMA 200 crossover on M1 timeframe (XAUUSD)
+🎯 Core Objective
 
-⚙️ How the Prototype Works
-🔄 Architecture Overview
-MT5 Expert Advisor (MQL5)
+Implement a real-time EMA200 crossover strategy
+
+Execute trades on MT5 using official EA execution
+
+Avoid unofficial or unsafe APIs
+
+Demonstrate live market integration (demo / test environment)
+
+Provide a strong foundation for future enhancements
+
+🏗️ System Architecture
+MT5 Terminal (MQL5 EA)
         ↓
- Writes live market data to CSV
+   market.csv (live data)
         ↓
-Python Engine reads CSV in real time
+Python Trading Engine
         ↓
-Python calculates EMA200 & trade logic
+   command.txt (trade orders)
         ↓
-Python outputs trade command
-        ↓
-MT5 EA executes trade
+MT5 EA executes trades
 
+Design Principles
 
-This approach acts as a custom MT5 trading API, fully compliant with MetaTrader rules.
+Execution layer never contains strategy logic
 
-📈 Strategy Logic (Prototype Scope)
+Strategy layer never touches broker directly
 
-Timeframe: M1
+Clean IPC via file-based bridge
 
-Indicator: EMA 200
+Failure isolation (Python crash ≠ MT5 crash)
+
+📈 Trading Strategy
+
+Indicator:
+
+EMA 200
+
+Timeframe:
+
+M1 (1-minute)
 
 Logic:
 
-Detect candle close above/below EMA200
+BUY when price crosses above EMA200
 
-Confirm BUY / SELL setup
+SELL when price crosses below EMA200
 
-Auto-calculate:
+One signal per crossover (no trade spamming)
 
-Entry
+Risk Controls (Prototype Level):
 
-Stop Loss (SL)
+Fixed SL / TP (demo values)
 
-Take Profit (TP)
+Duplicate trade prevention
 
-Outputs clear trade commands
-
-🧪 What This Prototype Proves
-
-✅ Live market data flow from MT5
-✅ Real-time Python strategy execution
-✅ Stable MT5 ↔ Python communication
-✅ Correct EMA200 calculations
-✅ Confirmed trade signal generation
-✅ Production-ready architecture foundation
-
-🚧 Prototype Limitations (Intentional)
-
-This is a prototype, not a full trading bot.
-
-Not included:
-
-Money management
-
-Position sizing
-
-Multi-symbol handling
-
-Risk % control
-
-Order execution optimization
-
-Error recovery logic
-
-These are planned for future iterations.
-
-🛠️ Tech Stack
+⚙️ Technology Stack
 
 MetaTrader 5
 
@@ -90,21 +79,91 @@ Python 3
 
 CSV-based IPC (Inter-Process Communication)
 
-🎯 Use Case
+No third-party or unofficial MT5 APIs are used.
 
-This project is ideal for:
+🚀 Features Implemented
 
-Learning algorithmic trading with MT5
+✅ Live market data feed from MT5
 
-Understanding Python ↔ MT5 integration
+✅ Real-time EMA200 calculation in Python
 
-Building a foundation for advanced trading systems
+✅ BUY / SELL signal generation
 
-Demonstrating a working trading prototype
+✅ Trade execution via MT5 EA
 
-🟢 Current Status
+✅ Demo-safe trading workflow
 
-✔ Prototype complete
-✔ Strategy validated
-✔ Live data confirmed
-✔ Ready for enhancement
+✅ GitHub security-compliant (no secrets in repo)
+
+🚧 Intentional Limitations
+
+This repository is a prototype, not a production trading bot.
+
+Not included (by design):
+
+Position sizing
+
+Advanced money management
+
+Multi-symbol support
+
+News filtering
+
+High-frequency execution
+
+These can be added in future iterations.
+
+🧪 Usage (Demo / Test Environment)
+
+Open MetaTrader 5
+
+Attach the provided EA to XAUUSD (M1)
+
+Enable Algo Trading
+
+Run Python engine:
+
+python main.py
+
+
+The system will:
+
+Listen to live market data
+
+Detect EMA200 crossovers
+
+Send trade commands to MT5
+
+🔐 Security Note
+
+No API keys or secrets are stored in this repository
+
+All sensitive credentials were intentionally removed
+
+The project complies with GitHub Push Protection rules
+
+🎓 Academic / Learning Use
+
+This project is suitable for:
+
+Algorithmic trading demonstrations
+
+MT5 integration learning
+
+System architecture case studies
+
+College / academic submissions
+
+🟢 Project Status
+
+✔ Live MT5 integration complete
+
+✔ Strategy validated in real-time
+
+✔ Trade execution confirmed (test environment)
+
+✔ Repository cleaned and secured
+
+📌 One-Line Summary
+
+A real-time EMA200 trading prototype using Python for strategy logic and MetaTrader 5 Expert Advisor for official trade execution.
