@@ -1,69 +1,164 @@
 """
-MT5 Bridge Module - File-based communication with MetaTrader 5.
+MT5 Bridge Module - Direct communication with MetaTrader 5 via Python API.
 
 This module provides functions to read market data from and send commands
-to MT5 terminal via shared files in the Common Files directory.
+to MT5 terminal using the official MetaTrader5 Python API.
 """
 
 import os
 import time
+from datetime import datetime
 from typing import Optional, Dict, Any
 
-# MT5 common files path
+
+# =========================
+# SAFE MT5 IMPORT
+# =========================
+try:
+    import MetaTrader5 as mt5
+    print(f"✅ MetaTrader5 loaded | version={mt5.__version__}")
+except Exception as e:
+    mt5 = None
+    print("❌ MetaTrader5 import failed:", repr(e))
+
+
+# =========================
+# MT5 FILE PATHS
+# =========================
 MT5_COMMON = os.path.expanduser(
     r"~\AppData\Roaming\MetaQuotes\Terminal\Common\Files"
 )
 
-MARKET_FILE: str = os.path.join(MT5_COMMON, "market.csv")
-COMMAND_FILE: str = os.path.join(MT5_COMMON, "command.txt")
+COMMAND_FILE = os.path.join(MT5_COMMON, "command.txt")
+TRADES_FILE = os.path.join(MT5_COMMON, "trades.csv")
+
+# Trading symbol
+SYMBOL = "XAUUSD"
+
+# MT5 connection state
+_mt5_initialized = False
 
 
+# =========================
+# MT5 INITIALIZATION
+# =========================
+def _initialize_mt5() -> bool:
+    """
+    Initialize MetaTrader5 connection.
+    """
+    global _mt5_initialized
+
+    if _mt5_initialized:
+        return True
+
+    if mt5 is None:
+        print("❌ MetaTrader5 package not available in this Python")
+        return False
+
+    if not mt5.initialize():
+        print(f"❌ MT5 initialize failed → {mt5.last_error()}")
+        return False
+
+    symbol_info = mt5.symbol_info(SYMBOL)
+    if symbol_info is None:
+        print(f"❌ Symbol {SYMBOL} not found in Market Watch")
+        mt5.shutdown()
+        return False
+
+    if not symbol_info.visible:
+        if not mt5.symbol_select(SYMBOL, True):
+            print(f"❌ Failed to select symbol {SYMBOL}")
+            mt5.shutdown()
+            return False
+
+    _mt5_initialized = True
+    return True
+
+
+# =========================
+# WAIT FOR MARKET
+# =========================
 def wait_for_market() -> None:
-    """Wait until MT5 starts writing market data to the market.csv file."""
-    print("⏳ Waiting for MT5 market.csv ...")
-    while not os.path.exists(MARKET_FILE):
+    print("⏳ Waiting for MT5 connection...")
+    while not _initialize_mt5():
         time.sleep(1)
-    print("✅ MT5 market feed detected")
+    print("✅ MT5 connection established")
 
 
+# =========================
+# READ MARKET DATA
+# =========================
 def read_market() -> Optional[Dict[str, Any]]:
     """
-    Read latest market tick from MT5 CSV file.
-    
-    Returns:
-        Dictionary with market data (time, symbol, bid, ask) or None if error
+    Read latest market tick from MT5.
     """
+    if not _initialize_mt5():
+        return None
+
+    tick = mt5.symbol_info_tick(SYMBOL)
+    if tick is None:
+        return None
+
+    tick_time = datetime.fromtimestamp(tick.time)
+
+    return {
+        "time": tick_time.strftime("%Y.%m.%d %H:%M:%S"),
+        "symbol": SYMBOL,
+        "bid": float(tick.bid),
+        "ask": float(tick.ask),
+    }
+
+
+# =========================
+# SEND TRADE COMMAND
+# =========================
+def send_command(action: str, sl: float, tp: float) -> str:
+    ticket = str(int(time.time()))
+
+    with open(COMMAND_FILE, "w") as f:
+        f.write(f"{ticket},{action},{sl},{tp}")
+
+    print(f"📤 COMMAND SENT → {action} | SL={sl} TP={tp}")
+    return ticket
+
+
+# =========================
+# READ TRADE EXIT (PHASE 2)
+# =========================
+def read_trade_exit(last_ticket: Optional[str]) -> Optional[Dict[str, Any]]:
+    if not last_ticket or not os.path.exists(TRADES_FILE):
+        return None
+
     try:
-        with open(MARKET_FILE, "r", encoding="utf-16") as f:
-            lines = f.readlines()
-            if not lines:
+        import csv
+        with open(TRADES_FILE, newline="") as f:
+            rows = list(csv.DictReader(f))
+            if not rows:
                 return None
 
-            last = lines[-1].strip().split()
-            if len(last) < 4:
+            last = rows[-1]
+
+            if last.get("ticket") != last_ticket:
+                return None
+            if last.get("status") != "CLOSED":
                 return None
 
             return {
-                "time": last[0] + " " + last[1],
-                "symbol": last[2],
-                "bid": float(last[3]),
-                "ask": float(last[4]) if len(last) > 4 else float(last[3])
+                "ticket": last.get("ticket"),
+                "result": last.get("result", "UNKNOWN"),
             }
 
-    except Exception:
+    except Exception as e:
+        print("⚠️ Error reading trades.csv:", e)
         return None
 
 
-def send_command(signal: str, sl: float, tp: float) -> None:
-    """
-    Send trade command to MT5 via command file.
-    
-    Args:
-        signal: Trading signal ("BUY" or "SELL")
-        sl: Stop loss price
-        tp: Take profit price
-    """
-    with open(COMMAND_FILE, "w") as f:
-        f.write(f"{signal},{sl},{tp}")
-
-    print(f"📤 COMMAND SENT → {signal} | SL={sl} TP={tp}")
+# =========================
+# EXPLICIT EXPORTS
+# =========================
+__all__ = [
+    "wait_for_market",
+    "read_market",
+    "send_command",
+    "read_trade_exit",
+]

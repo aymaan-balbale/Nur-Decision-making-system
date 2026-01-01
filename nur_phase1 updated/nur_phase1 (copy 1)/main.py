@@ -1,50 +1,30 @@
 #!/usr/bin/env python3
-"""
-Nur Trading Agent - LIVE EMA200 + DEMO TRADE EXECUTION
-
-This module implements the live trading system that reads market data from MT5
-and executes trades based on EMA200 crossover signals.
-"""
+import sys
+print("PYTHON EXECUTABLE:", sys.executable)
+print("PYTHON VERSION:", sys.version)
 
 import time
 from collections import deque
 from typing import Optional, Dict, Any
-from bridge.bridge import read_market, wait_for_market, send_command
+
+from bridge.bridge import (
+    read_market,
+    wait_for_market,
+    send_command,
+    read_trade_exit,   # 🔹 ADDED
+)
 
 
-# =========================
-# EMA CALCULATOR
-# =========================
+STATE_WAITING = "WAITING"
+STATE_IN_TRADE = "IN_TRADE"
+
+
 class EMA200:
-    """
-    Exponential Moving Average calculator with 200-period.
-    
-    Uses the standard EMA formula:
-    EMA = (Price - Previous EMA) * Multiplier + Previous EMA
-    where Multiplier = 2 / (Period + 1)
-    """
-    
     def __init__(self, period: int = 200) -> None:
-        """
-        Initialize EMA calculator.
-        
-        Args:
-            period: EMA period (default: 200)
-        """
-        self.period: int = period
-        self.multiplier: float = 2 / (period + 1)
+        self.multiplier = 2 / (period + 1)
         self.ema: Optional[float] = None
 
     def update(self, price: float) -> float:
-        """
-        Update EMA with new price.
-        
-        Args:
-            price: Current price
-            
-        Returns:
-            Updated EMA value
-        """
         if self.ema is None:
             self.ema = price
         else:
@@ -52,16 +32,7 @@ class EMA200:
         return self.ema
 
 
-# =========================
-# LIVE MODE WITH TRADE EXECUTION
-# =========================
 def run_live_with_trades() -> None:
-    """
-    Run live trading mode with EMA200 strategy and demo trade execution.
-    
-    Monitors MT5 market feed, calculates EMA200, and sends trade commands
-    when crossover signals are detected.
-    """
     print("\n🔴 LIVE MODE — EMA200 + DEMO TRADING ENABLED")
     print("=" * 60)
 
@@ -71,11 +42,25 @@ def run_live_with_trades() -> None:
     price_history: deque = deque(maxlen=2)
 
     last_time: Optional[str] = None
-    last_trade: Optional[str] = None  # Prevents duplicate trades
+    last_trade: Optional[str] = None
+    last_ticket: Optional[str] = None   # 🔹 ADDED
+    state: str = STATE_WAITING
 
     print("📡 Listening to MT5 live ticks...\n")
 
     while True:
+        # =========================
+        # CHECK TRADE EXIT (PHASE 2)
+        # =========================
+        exit_info = read_trade_exit(last_ticket)
+        if exit_info and state == STATE_IN_TRADE:
+            print(f"🏁 EXIT → {exit_info['result']}")
+            print("🔄 STATE RESET → WAITING\n")
+
+            state = STATE_WAITING
+            last_trade = None
+            last_ticket = None
+
         market: Optional[Dict[str, Any]] = read_market()
         if not market:
             time.sleep(0.2)
@@ -85,51 +70,61 @@ def run_live_with_trades() -> None:
             continue
         last_time = market["time"]
 
-        price: float = market["bid"]
-        ema: float = ema200.update(price)
+        price = market["bid"]
+        ema = ema200.update(price)
 
         price_history.append(price)
 
         print(
             f"{market['time']} | "
             f"PRICE={price:.2f} | "
-            f"EMA200={ema:.2f}"
+            f"EMA200={ema:.2f} | "
+            f"STATE={state}"
         )
 
         if len(price_history) < 2:
             continue
 
-        prev_price: float = price_history[0]
-        curr_price: float = price_history[1]
+        prev_price, curr_price = price_history
+
+        if state == STATE_IN_TRADE:
+            print("⏸ NO TRADE → already in trade\n")
+            time.sleep(0.2)
+            continue
 
         # =========================
-        # EMA200 CROSS LOGIC
+        # ENTRY LOGIC (UNCHANGED)
         # =========================
-        # BUY Signal: Price crosses above EMA200
         if prev_price < ema and curr_price > ema and last_trade != "BUY":
-            print("✅ BUY SIGNAL → SENDING TO MT5\n")
+            print("✅ BUY SIGNAL → EMA200 bullish cross → SENDING TO MT5\n")
 
-            sl: float = round(price - 2.0, 2)   # Demo SL
-            tp: float = round(price + 4.0, 2)   # Demo TP
+            sl = round(price - 2.0, 2)
+            tp = round(price + 4.0, 2)
 
-            send_command("BUY", sl, tp)
+            last_ticket = send_command("BUY", sl, tp)
             last_trade = "BUY"
+            state = STATE_IN_TRADE
 
-        # SELL Signal: Price crosses below EMA200
         elif prev_price > ema and curr_price < ema and last_trade != "SELL":
-            print("❌ SELL SIGNAL → SENDING TO MT5\n")
+            print("❌ SELL SIGNAL → EMA200 bearish cross → SENDING TO MT5\n")
 
-            sl = round(price + 2.0, 2)   # Demo SL
-            tp = round(price - 4.0, 2)   # Demo TP
+            sl = round(price + 2.0, 2)
+            tp = round(price - 4.0, 2)
 
-            send_command("SELL", sl, tp)
+            last_ticket = send_command("SELL", sl, tp)
             last_trade = "SELL"
+            state = STATE_IN_TRADE
+
+        else:
+            if curr_price > ema:
+                print("ℹ️ NO TRADE → price above EMA, no cross\n")
+            elif curr_price < ema:
+                print("ℹ️ NO TRADE → price below EMA, no cross\n")
+            else:
+                print("ℹ️ NO TRADE → price near EMA, waiting\n")
 
         time.sleep(0.2)
 
 
-# =========================
-# RUN
-# =========================
 if __name__ == "__main__":
     run_live_with_trades()
