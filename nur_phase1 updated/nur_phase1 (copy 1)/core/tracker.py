@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 Trade Tracker - Logs and analyzes all trade performance.
+
 Tracks exactly what you asked for:
 - Total trades
 - Profitable trades (TP hit)
@@ -14,21 +15,32 @@ import numpy as np
 from datetime import datetime
 import json
 import os
+from typing import Optional, Dict, Any, List, Tuple
+
 
 class TradeTracker:
     """
     Tracks and analyzes trade performance.
+    
+    Maintains a log of all trades with detailed statistics including
+    PnL, win rate, profit factor, and exit reasons.
     """
     
-    def __init__(self, log_file="logs/trades_log.csv"):
-        self.log_file = log_file
-        self.trades = []
-        self.current_trade = None
+    def __init__(self, log_file: str = "logs/trades_log.csv") -> None:
+        """
+        Initialize trade tracker.
+        
+        Args:
+            log_file: Path to CSV file for logging trades
+        """
+        self.log_file: str = log_file
+        self.trades: List[Dict[str, Any]] = []
+        self.current_trade: Optional[Dict[str, Any]] = None
         
         # Initialize log file if it doesn't exist
         self._init_log_file()
     
-    def _init_log_file(self):
+    def _init_log_file(self) -> None:
         """Initialize the log file with headers"""
         if not os.path.exists(self.log_file):
             os.makedirs(os.path.dirname(self.log_file), exist_ok=True)
@@ -44,9 +56,28 @@ class TradeTracker:
             pd.DataFrame(columns=headers).to_csv(self.log_file, index=False)
             print(f"📝 Initialized trade log: {self.log_file}")
     
-    def start_trade(self, trade_id, direction, entry_price, stop_loss, take_profit, 
-                    position_size=0.01, entry_time=None):
-        """Start tracking a new trade"""
+    def start_trade(
+        self,
+        trade_id: str,
+        direction: str,
+        entry_price: float,
+        stop_loss: float,
+        take_profit: float,
+        position_size: float = 0.01,
+        entry_time: Optional[datetime] = None
+    ) -> None:
+        """
+        Start tracking a new trade.
+        
+        Args:
+            trade_id: Unique identifier for the trade
+            direction: 'BUY' or 'SELL'
+            entry_price: Entry price of the trade
+            stop_loss: Stop loss price
+            take_profit: Take profit price
+            position_size: Position size in lots (default: 0.01)
+            entry_time: Entry timestamp (default: current time)
+        """
         self.current_trade = {
             'trade_id': trade_id,
             'entry_time': entry_time or datetime.now(),
@@ -65,17 +96,30 @@ class TradeTracker:
         
         print(f"📊 Started tracking trade {trade_id}: {direction} at {entry_price:.2f}")
     
-    def update_trade(self, current_price, current_time=None):
-        """Update current trade with latest price"""
+    def update_trade(
+        self,
+        current_price: float,
+        current_time: Optional[datetime] = None
+    ) -> Tuple[float, float]:
+        """
+        Update current trade with latest price.
+        
+        Args:
+            current_price: Current market price
+            current_time: Current timestamp (default: current time)
+            
+        Returns:
+            Tuple of (pnl, pnl_pct)
+        """
         if not self.current_trade:
-            return
+            return 0.0, 0.0
         
         self.current_trade['candles_in_trade'] += 1
         
         # Calculate current PnL
         if self.current_trade['direction'] == 'BUY':
-            pnl = (current_price - self.current_trade['entry_price']) * self.current_trade['position_size'] * 100
-            pnl_pct = (current_price - self.current_trade['entry_price']) / self.current_trade['entry_price'] * 100
+            pnl: float = (current_price - self.current_trade['entry_price']) * self.current_trade['position_size'] * 100
+            pnl_pct: float = (current_price - self.current_trade['entry_price']) / self.current_trade['entry_price'] * 100
         else:  # SELL
             pnl = (self.current_trade['entry_price'] - current_price) * self.current_trade['position_size'] * 100
             pnl_pct = (self.current_trade['entry_price'] - current_price) / self.current_trade['entry_price'] * 100
@@ -94,49 +138,64 @@ class TradeTracker:
         
         return pnl, pnl_pct
     
-    def close_trade(self, exit_price, exit_reason, exit_time=None):
-        """Close the current trade and log it"""
+    def close_trade(
+        self,
+        exit_price: float,
+        exit_reason: str,
+        exit_time: Optional[datetime] = None
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Close the current trade and log it.
+        
+        Args:
+            exit_price: Exit price of the trade
+            exit_reason: Reason for closing the trade
+            exit_time: Exit timestamp (default: current time)
+            
+        Returns:
+            Trade record dictionary or None if no active trade
+        """
         if not self.current_trade:
             print("❌ No active trade to close")
             return None
         
         # Calculate final PnL
         if self.current_trade['direction'] == 'BUY':
-            pnl = (exit_price - self.current_trade['entry_price']) * self.current_trade['position_size'] * 100
-            pnl_pct = (exit_price - self.current_trade['entry_price']) / self.current_trade['entry_price'] * 100
+            pnl: float = (exit_price - self.current_trade['entry_price']) * self.current_trade['position_size'] * 100
+            pnl_pct: float = (exit_price - self.current_trade['entry_price']) / self.current_trade['entry_price'] * 100
         else:  # SELL
             pnl = (self.current_trade['entry_price'] - exit_price) * self.current_trade['position_size'] * 100
             pnl_pct = (self.current_trade['entry_price'] - exit_price) / self.current_trade['entry_price'] * 100
         
         # Calculate risk/reward achieved
-        entry = self.current_trade['entry_price']
-        sl = self.current_trade['stop_loss']
-        tp = self.current_trade['take_profit']
+        entry: float = self.current_trade['entry_price']
+        sl: float = self.current_trade['stop_loss']
+        tp: Optional[float] = self.current_trade['take_profit']
         
         if self.current_trade['direction'] == 'BUY':
-            risk = entry - sl
-            reward = tp - entry if tp else 0
+            risk: float = entry - sl
+            reward: float = tp - entry if tp else 0
         else:  # SELL
             risk = sl - entry
             reward = entry - tp if tp else 0
         
-        risk_reward_achieved = 0
+        risk_reward_achieved: float = 0
         if risk > 0:
             if self.current_trade['direction'] == 'BUY':
-                reward_achieved = exit_price - entry
+                reward_achieved: float = exit_price - entry
             else:
                 reward_achieved = entry - exit_price
             risk_reward_achieved = reward_achieved / risk
         
         # Calculate net PnL (including commission and swap)
-        net_pnl = pnl - self.current_trade['commission'] + self.current_trade['swap']
+        net_pnl: float = pnl - self.current_trade['commission'] + self.current_trade['swap']
         
         # Calculate duration
         exit_time = exit_time or datetime.now()
-        duration = (exit_time - self.current_trade['entry_time']).total_seconds() / 60
+        duration: float = (exit_time - self.current_trade['entry_time']).total_seconds() / 60
         
         # Create trade record
-        trade_record = {
+        trade_record: Dict[str, Any] = {
             'trade_id': self.current_trade['trade_id'],
             'entry_time': self.current_trade['entry_time'],
             'exit_time': exit_time,
@@ -173,16 +232,26 @@ class TradeTracker:
         
         return trade_record
     
-    def _save_to_csv(self, trade_record):
-        """Save trade record to CSV"""
+    def _save_to_csv(self, trade_record: Dict[str, Any]) -> None:
+        """
+        Save trade record to CSV file.
+        
+        Args:
+            trade_record: Dictionary with trade data
+        """
         try:
             df = pd.DataFrame([trade_record])
             df.to_csv(self.log_file, mode='a', header=False, index=False)
         except Exception as e:
             print(f"❌ Error saving trade to CSV: {e}")
     
-    def _print_trade_summary(self, trade):
-        """Print a summary of the closed trade"""
+    def _print_trade_summary(self, trade: Dict[str, Any]) -> None:
+        """
+        Print a summary of the closed trade.
+        
+        Args:
+            trade: Trade record dictionary
+        """
         color = '🟢' if trade['pnl'] > 0 else '🔴'
         
         print(f"\n{color} Trade {trade['trade_id']} Closed {color}")
@@ -193,8 +262,13 @@ class TradeTracker:
         print(f"   Duration: {trade['duration_minutes']:.1f} min, {trade['candles_in_trade']} candles")
         print(f"   Max Profit: {trade['max_profit_pct']:.2f}%, Max Loss: {trade['max_loss_pct']:.2f}%")
     
-    def get_statistics(self):
-        """Calculate and return trade statistics"""
+    def get_statistics(self) -> Dict[str, Any]:
+        """
+        Calculate and return trade statistics.
+        
+        Returns:
+            Dictionary with comprehensive trade statistics
+        """
         if not self.trades:
             return {
                 'total_trades': 0,
@@ -215,34 +289,34 @@ class TradeTracker:
         df = pd.DataFrame(self.trades)
         
         # Basic statistics
-        total_trades = len(df)
-        profitable_trades = len(df[df['pnl'] > 0])
-        losing_trades = len(df[df['pnl'] <= 0])
-        win_rate = (profitable_trades / total_trades * 100) if total_trades > 0 else 0
+        total_trades: int = len(df)
+        profitable_trades: int = len(df[df['pnl'] > 0])
+        losing_trades: int = len(df[df['pnl'] <= 0])
+        win_rate: float = (profitable_trades / total_trades * 100) if total_trades > 0 else 0
         
         # PnL statistics
-        total_pnl = df['pnl'].sum()
-        avg_pnl = df['pnl'].mean()
+        total_pnl: float = df['pnl'].sum()
+        avg_pnl: float = df['pnl'].mean()
         
         winning_trades = df[df['pnl'] > 0]
         losing_trades_df = df[df['pnl'] <= 0]
         
-        avg_win = winning_trades['pnl'].mean() if len(winning_trades) > 0 else 0
-        avg_loss = losing_trades_df['pnl'].mean() if len(losing_trades_df) > 0 else 0
+        avg_win: float = winning_trades['pnl'].mean() if len(winning_trades) > 0 else 0
+        avg_loss: float = losing_trades_df['pnl'].mean() if len(losing_trades_df) > 0 else 0
         
-        largest_win = df['pnl'].max()
-        largest_loss = df['pnl'].min()
+        largest_win: float = df['pnl'].max()
+        largest_loss: float = df['pnl'].min()
         
         # Advanced metrics
-        gross_profit = winning_trades['pnl'].sum() if len(winning_trades) > 0 else 0
-        gross_loss = abs(losing_trades_df['pnl'].sum()) if len(losing_trades_df) > 0 else 0
+        gross_profit: float = winning_trades['pnl'].sum() if len(winning_trades) > 0 else 0
+        gross_loss: float = abs(losing_trades_df['pnl'].sum()) if len(losing_trades_df) > 0 else 0
         
-        profit_factor = gross_profit / gross_loss if gross_loss > 0 else float('inf')
+        profit_factor: float = gross_profit / gross_loss if gross_loss > 0 else float('inf')
         
         # Expectancy = (Win% × Avg Win) - (Loss% × Avg Loss)
-        win_percentage = profitable_trades / total_trades if total_trades > 0 else 0
-        loss_percentage = losing_trades / total_trades if total_trades > 0 else 0
-        expectancy = (win_percentage * avg_win) - (loss_percentage * abs(avg_loss))
+        win_percentage: float = profitable_trades / total_trades if total_trades > 0 else 0
+        loss_percentage: float = losing_trades / total_trades if total_trades > 0 else 0
+        expectancy: float = (win_percentage * avg_win) - (loss_percentage * abs(avg_loss))
         
         return {
             'total_trades': total_trades,
@@ -259,7 +333,7 @@ class TradeTracker:
             'expectancy': round(expectancy, 2)
         }
     
-    def print_summary_report(self):
+    def print_summary_report(self) -> None:
         """Print a comprehensive summary report"""
         stats = self.get_statistics()
         
@@ -296,8 +370,13 @@ class TradeTracker:
         
         print("\n" + "="*60)
     
-    def save_detailed_report(self, filename="logs/trade_analysis_report.json"):
-        """Save detailed report to JSON file"""
+    def save_detailed_report(self, filename: str = "logs/trade_analysis_report.json") -> None:
+        """
+        Save detailed report to JSON file.
+        
+        Args:
+            filename: Path to output JSON file
+        """
         report = {
             'summary': self.get_statistics(),
             'trades': self.trades,
@@ -311,7 +390,7 @@ class TradeTracker:
 
 
 # Test the tracker
-def test_tracker():
+def test_tracker() -> None:
     """Test trade tracker functionality"""
     print("🧪 Testing Trade Tracker")
     print("=" * 50)

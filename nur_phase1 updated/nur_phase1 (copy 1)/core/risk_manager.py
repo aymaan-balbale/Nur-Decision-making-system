@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 """
 Risk Management for Nur - Stop Loss and Take Profit calculations.
+
+This module provides risk management functions for calculating appropriate
+stop loss and take profit levels based on market conditions and risk parameters.
 """
+
+from typing import Optional, Dict, Any
+
 
 class RiskManager:
     """
@@ -17,32 +23,37 @@ class RiskManager:
     """
     
     @staticmethod
-    def calculate_stop_loss(signal, entry_price, previous_candle, atr=None):
+    def calculate_stop_loss(
+        signal: str,
+        entry_price: float,
+        previous_candle: Optional[Dict[str, Any]],
+        atr: Optional[float] = None
+    ) -> Optional[float]:
         """
         Calculate stop loss based on previous candle.
         
         Args:
             signal: 'BUY' or 'SELL'
-            entry_price: float, entry price
-            previous_candle: dict with 'low', 'high'
-            atr: optional ATR value for dynamic SL
+            entry_price: Entry price for the trade
+            previous_candle: dict with 'low', 'high' from previous candle
+            atr: optional ATR value for dynamic SL (not currently used)
             
         Returns:
-            float: stop loss price
+            Stop loss price, or None if calculation fails
         """
         if previous_candle is None:
             return None
         
         if signal == 'BUY':
             # BUY SL = Previous candle low
-            sl = previous_candle['low']
+            sl: float = previous_candle['low']
             
             # Optional: Add buffer (e.g., 0.5 pips below)
-            buffer = 0.05  # 0.5 pips for XAUUSD
+            buffer: float = 0.05  # 0.5 pips for XAUUSD
             sl = sl - buffer
             
             # Ensure SL is reasonable (not too far)
-            max_sl_distance = entry_price * 0.01  # Max 1% risk
+            max_sl_distance: float = entry_price * 0.01  # Max 1% risk
             if entry_price - sl > max_sl_distance:
                 sl = entry_price - max_sl_distance
             
@@ -66,8 +77,14 @@ class RiskManager:
         return None
     
     @staticmethod
-    def calculate_take_profit(signal, entry_price, stop_loss, risk_reward=1.5, 
-                              previous_swing=None, atr=None):
+    def calculate_take_profit(
+        signal: str,
+        entry_price: float,
+        stop_loss: Optional[float],
+        risk_reward: float = 1.5,
+        previous_swing: Optional[Dict[str, Any]] = None,
+        atr: Optional[float] = None
+    ) -> Optional[float]:
         """
         Calculate take profit.
         
@@ -77,27 +94,27 @@ class RiskManager:
         
         Args:
             signal: 'BUY' or 'SELL'
-            entry_price: float
-            stop_loss: float
-            risk_reward: float, default 1.5
+            entry_price: Entry price for the trade
+            stop_loss: Calculated stop loss price
+            risk_reward: Risk-reward ratio (default: 1.5)
             previous_swing: dict with 'high' (for BUY) or 'low' (for SELL)
-            atr: optional ATR value for dynamic TP
+            atr: optional ATR value for dynamic TP (not currently used)
             
         Returns:
-            float: take profit price
+            Take profit price, or None if calculation fails
         """
         if stop_loss is None:
             return None
         
         # Calculate risk (distance to SL)
         if signal == 'BUY':
-            risk = entry_price - stop_loss
+            risk: float = entry_price - stop_loss
             # Minimum TP based on risk-reward
-            min_tp = entry_price + (risk * risk_reward)
+            min_tp: float = entry_price + (risk * risk_reward)
             
             # Check if previous swing high is better than minimum TP
             if previous_swing and 'high' in previous_swing:
-                swing_tp = previous_swing['high']
+                swing_tp: float = previous_swing['high']
                 if swing_tp > min_tp:
                     return swing_tp
             
@@ -119,24 +136,29 @@ class RiskManager:
         return None
     
     @staticmethod
-    def calculate_position_size(account_balance, risk_percentage, entry_price, stop_loss):
+    def calculate_position_size(
+        account_balance: float,
+        risk_percentage: float,
+        entry_price: float,
+        stop_loss: float
+    ) -> float:
         """
         Calculate position size based on risk.
         
         Args:
-            account_balance: float, account balance
-            risk_percentage: float, percentage to risk (e.g., 1.0 for 1%)
-            entry_price: float
-            stop_loss: float
+            account_balance: Account balance in base currency
+            risk_percentage: Percentage to risk per trade (e.g., 1.0 for 1%)
+            entry_price: Entry price for the trade
+            stop_loss: Stop loss price
             
         Returns:
-            float: position size in lots (standard lot = 100,000 units)
+            Position size in lots (standard lot = 100,000 units)
         """
         # Calculate risk amount
-        risk_amount = account_balance * (risk_percentage / 100.0)
+        risk_amount: float = account_balance * (risk_percentage / 100.0)
         
         # Calculate price risk per unit
-        price_risk = abs(entry_price - stop_loss)
+        price_risk: float = abs(entry_price - stop_loss)
         
         if price_risk <= 0:
             return 0.01  # Default minimum lot size
@@ -147,11 +169,11 @@ class RiskManager:
         
         # Simplified calculation: risk amount / price risk
         # This gives us the lot size that would lose risk_amount if SL hits
-        position_size = risk_amount / (price_risk * 100)  # Simplified
+        position_size: float = risk_amount / (price_risk * 100)  # Simplified
         
         # Apply limits
-        min_lot = 0.01  # Minimum micro lot
-        max_lot = 1.0   # Maximum standard lot
+        min_lot: float = 0.01  # Minimum micro lot
+        max_lot: float = 1.0   # Maximum standard lot
         
         position_size = max(min_lot, min(position_size, max_lot))
         
@@ -162,7 +184,7 @@ class RiskManager:
 
 
 # Test the risk manager
-def test_risk_manager():
+def test_risk_manager() -> None:
     """Test risk management calculations"""
     print("🧪 Testing Risk Manager")
     print("=" * 50)

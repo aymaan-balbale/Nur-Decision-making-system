@@ -1,9 +1,13 @@
 """
 200 EMA Crossover Strategy for Nur.
-Simple strategy for XAUUSD M1 with 200 EMA.
+
+Simple strategy for XAUUSD M1 with 200 EMA crossover logic.
 """
+
 import pandas as pd
 import numpy as np
+from typing import Optional, Dict, Any, Tuple
+
 
 class EMAStrategy:
     """
@@ -13,18 +17,37 @@ class EMAStrategy:
     - Uses wait_for_close=True (no repainting)
     """
     
-    def __init__(self, ema_period=200):
-        self.ema_period = ema_period
-        self.name = f"200_EMA_Crossover"
+    def __init__(self, ema_period: int = 200) -> None:
+        """
+        Initialize EMA strategy.
         
-    def calculate_ema(self, df, price_col='close'):
-        """Calculate EMA on a DataFrame"""
+        Args:
+            ema_period: Period for EMA calculation (default: 200)
+        """
+        self.ema_period: int = ema_period
+        self.name: str = f"200_EMA_Crossover"
+        
+    def calculate_ema(self, df: pd.DataFrame, price_col: str = 'close') -> pd.Series:
+        """
+        Calculate EMA on a DataFrame.
+        
+        Args:
+            df: DataFrame with price data
+            price_col: Column name for price (default: 'close')
+            
+        Returns:
+            Series with EMA values
+        """
         return df[price_col].ewm(span=self.ema_period, adjust=False).mean()
     
-    def get_signal(self, df, current_idx):
+    def get_signal(self, df: pd.DataFrame, current_idx: int) -> Optional[str]:
         """
         Get trading signal for current candle.
         
+        Args:
+            df: DataFrame with market data and EMA column
+            current_idx: Index of current candle
+            
         Returns:
             'BUY', 'SELL', or None
         """
@@ -41,8 +64,8 @@ class EMAStrategy:
             ema_previous = df['ema_200'].iloc[current_idx - 1]
             
             # Current close relative to EMA
-            current_close = current_candle['close']
-            prev_close = prev_candle['close']
+            current_close: float = current_candle['close']
+            prev_close: float = prev_candle['close']
             
             # BUY Signal: Crossover ABOVE EMA
             if (prev_close <= ema_previous and  # Previous was below or on EMA
@@ -60,8 +83,16 @@ class EMAStrategy:
             print(f"Error in EMA strategy: {e}")
             return None
     
-    def should_exit_early(self, df, current_idx, trade_direction, entry_price, 
-                          current_price, candles_in_trade, max_candles=50):
+    def should_exit_early(
+        self,
+        df: pd.DataFrame,
+        current_idx: int,
+        trade_direction: str,
+        entry_price: float,
+        current_price: float,
+        candles_in_trade: int,
+        max_candles: int = 50
+    ) -> Tuple[bool, Optional[str]]:
         """
         Check if we should exit trade early.
         
@@ -69,6 +100,18 @@ class EMAStrategy:
         1. Cross back over EMA (opposite signal)
         2. Price stagnation (small movement for many candles)
         3. Too many candles without progress
+        
+        Args:
+            df: DataFrame with market data
+            current_idx: Current candle index
+            trade_direction: 'BUY' or 'SELL'
+            entry_price: Entry price of the trade
+            current_price: Current market price
+            candles_in_trade: Number of candles since entry
+            max_candles: Maximum candles before forced exit
+            
+        Returns:
+            Tuple of (should_exit: bool, reason: str or None)
         """
         if candles_in_trade <= 5:  # Give trade time to develop
             return False, None
@@ -76,7 +119,7 @@ class EMAStrategy:
         current_candle = df.iloc[current_idx]
         prev_candle = df.iloc[current_idx - 1]
         
-        current_close = current_candle['close']
+        current_close: float = current_candle['close']
         ema_current = df['ema_200'].iloc[current_idx]
         ema_previous = df['ema_200'].iloc[current_idx - 1]
         
@@ -110,8 +153,9 @@ class EMAStrategy:
         
         return False, None
 
+
 # Test function
-def test_ema_strategy():
+def test_ema_strategy() -> EMAStrategy:
     """Test the EMA strategy"""
     print("Testing EMA Strategy...")
     

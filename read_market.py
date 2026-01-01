@@ -1,3 +1,10 @@
+"""
+MT5 Market Data Reader - Live monitoring of MT5 market.csv file.
+
+This utility reads and displays real-time market data from MT5 terminal
+for debugging and monitoring purposes.
+"""
+
 import time
 import os
 
@@ -7,7 +14,7 @@ print("=== MT5 MARKET READER (LIVE) ===")
 print("Reading:", FILE_PATH)
 print("Press CTRL+C to stop\n")
 
-last_seen = ""
+last_seen: str = ""
 
 while True:
     try:

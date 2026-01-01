@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 """
 Observer - Monitors open trades and decides when to exit early.
-This gives Nur agency beyond just waiting for SL/TP.
+
+This module provides the TradeObserver class which monitors open trades
+and decides when to exit early based on candle behavior, giving Nur agency
+beyond just waiting for SL/TP.
 """
+
+from typing import Optional, Dict, Any, List
+
 
 class TradeObserver:
     """
@@ -15,8 +21,14 @@ class TradeObserver:
     4. Time-based exit (optional)
     """
     
-    def __init__(self, config=None):
-        self.config = config or {
+    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+        """
+        Initialize trade observer.
+        
+        Args:
+            config: Configuration dictionary with observer parameters
+        """
+        self.config: Dict[str, Any] = config or {
             'momentum_threshold': 0.001,  # 0.1% for strong opposite candle
             'stall_candles': 10,          # Exit if price doesn't move for 10 candles
             'max_trade_duration': 60,     # Max 60 minutes per trade
@@ -25,7 +37,7 @@ class TradeObserver:
         }
         
         # Track trade statistics
-        self.trade_stats = {
+        self.trade_stats: Dict[str, Any] = {
             'entry_price': None,
             'entry_time': None,
             'highest_price': None,
@@ -35,11 +47,18 @@ class TradeObserver:
         }
         
         # Price movement tracking
-        self.price_history = []
-        self.ema_history = []
+        self.price_history: List[float] = []
+        self.ema_history: List[float] = []
         
-    def start_trade(self, direction, entry_price, entry_time):
-        """Initialize tracking for a new trade"""
+    def start_trade(self, direction: str, entry_price: float, entry_time: Any) -> None:
+        """
+        Initialize tracking for a new trade.
+        
+        Args:
+            direction: 'BUY' or 'SELL'
+            entry_price: Entry price of the trade
+            entry_time: Entry timestamp
+        """
         self.trade_stats = {
             'entry_price': entry_price,
             'entry_time': entry_time,
@@ -55,22 +74,26 @@ class TradeObserver:
         
         print(f"🔍 Observer started tracking {direction} trade at {entry_price:.2f}")
     
-    def update(self, current_candle, current_ema=None):
+    def update(
+        self,
+        current_candle: Dict[str, Any],
+        current_ema: Optional[float] = None
+    ) -> Optional[Dict[str, Any]]:
         """
         Update observer with new candle data.
         
         Args:
             current_candle: dict with 'close', 'high', 'low', 'open'
-            current_ema: float, current EMA value
+            current_ema: Current EMA value (optional)
             
         Returns:
-            dict: Exit recommendation or None
+            dict with exit recommendation or None if no exit
         """
         if self.trade_stats['entry_price'] is None:
             return None
         
         self.trade_stats['candles_in_trade'] += 1
-        current_price = current_candle['close']
+        current_price: float = current_candle['close']
         
         # Update price extremes
         if self.trade_stats['direction'] == 'BUY':
@@ -94,7 +117,7 @@ class TradeObserver:
         
         # Calculate current profit/loss percentage
         if self.trade_stats['direction'] == 'BUY':
-            current_pnl_pct = (current_price - self.trade_stats['entry_price']) / self.trade_stats['entry_price'] * 100
+            current_pnl_pct: float = (current_price - self.trade_stats['entry_price']) / self.trade_stats['entry_price'] * 100
         else:  # SELL
             current_pnl_pct = (self.trade_stats['entry_price'] - current_price) / self.trade_stats['entry_price'] * 100
         
@@ -139,9 +162,23 @@ class TradeObserver:
         
         return None
     
-    def _check_exit_conditions(self, candle, ema, current_pnl_pct):
-        """Check all exit conditions"""
+    def _check_exit_conditions(
+        self,
+        candle: Dict[str, Any],
+        ema: Optional[float],
+        current_pnl_pct: float
+    ) -> Optional[str]:
+        """
+        Check all exit conditions.
         
+        Args:
+            candle: Current candle data
+            ema: Current EMA value
+            current_pnl_pct: Current profit/loss percentage
+            
+        Returns:
+            Exit reason string or None
+        """
         # 1. Candle closes back across EMA200
         if self._check_ema_crossback(candle, ema):
             return "EMA crossback"
@@ -165,13 +202,26 @@ class TradeObserver:
         
         return None
     
-    def _check_ema_crossback(self, candle, ema):
-        """Check if price closes back across EMA"""
+    def _check_ema_crossback(
+        self,
+        candle: Dict[str, Any],
+        ema: Optional[float]
+    ) -> bool:
+        """
+        Check if price closes back across EMA.
+        
+        Args:
+            candle: Current candle data
+            ema: Current EMA value
+            
+        Returns:
+            True if crossback detected
+        """
         if ema is None:
             return False
         
-        current_close = candle['close']
-        direction = self.trade_stats['direction']
+        current_close: float = candle['close']
+        direction: str = self.trade_stats['direction']
         
         if direction == 'BUY':
             # For BUY trade, exit if closes below EMA
@@ -180,18 +230,26 @@ class TradeObserver:
             # For SELL trade, exit if closes above EMA
             return current_close > ema
     
-    def _check_strong_opposite_candle(self, candle):
-        """Check for strong opposite momentum candle"""
-        direction = self.trade_stats['direction']
-        body_size = abs(candle['close'] - candle['open'])
-        candle_range = candle['high'] - candle['low']
+    def _check_strong_opposite_candle(self, candle: Dict[str, Any]) -> bool:
+        """
+        Check for strong opposite momentum candle.
+        
+        Args:
+            candle: Current candle data
+            
+        Returns:
+            True if strong opposite candle detected
+        """
+        direction: str = self.trade_stats['direction']
+        body_size: float = abs(candle['close'] - candle['open'])
+        candle_range: float = candle['high'] - candle['low']
         
         # Avoid division by zero
         if candle_range == 0:
             return False
         
         # Calculate body-to-range ratio
-        body_ratio = body_size / candle_range
+        body_ratio: float = body_size / candle_range
         
         # Strong candle has large body relative to range
         if body_ratio < 0.7:  # Not a strong candle
@@ -200,37 +258,60 @@ class TradeObserver:
         # Check if it's opposite to our direction
         if direction == 'BUY':
             # Strong bearish candle (close < open)
-            is_bearish = candle['close'] < candle['open']
+            is_bearish: bool = candle['close'] < candle['open']
             return is_bearish and body_size > (self.trade_stats['entry_price'] * self.config['momentum_threshold'])
         else:  # SELL
             # Strong bullish candle (close > open)
-            is_bullish = candle['close'] > candle['open']
+            is_bullish: bool = candle['close'] > candle['open']
             return is_bullish and body_size > (self.trade_stats['entry_price'] * self.config['momentum_threshold'])
     
-    def _check_price_stall(self):
-        """Check if price has stalled (not moved much for N candles)"""
+    def _check_price_stall(self) -> bool:
+        """
+        Check if price has stalled (not moved much for N candles).
+        
+        Returns:
+            True if price has stalled
+        """
         if len(self.price_history) < self.config['stall_candles']:
             return False
         
         # Calculate price range over last N candles
-        price_range = max(self.price_history) - min(self.price_history)
-        avg_price = sum(self.price_history) / len(self.price_history)
+        price_range: float = max(self.price_history) - min(self.price_history)
+        avg_price: float = sum(self.price_history) / len(self.price_history)
         
         # If range is less than 0.1% of average price, consider it stalled
         if avg_price == 0:
             return False
         
-        stall_threshold = avg_price * 0.001  # 0.1%
+        stall_threshold: float = avg_price * 0.001  # 0.1%
         return price_range < stall_threshold
     
-    def _check_time_exit(self):
-        """Exit if trade has been open too long"""
+    def _check_time_exit(self) -> bool:
+        """
+        Exit if trade has been open too long.
+        
+        Returns:
+            True if max duration reached
+        """
         return self.trade_stats['candles_in_trade'] >= self.config['max_trade_duration']
     
-    def _check_trailing_stop(self, candle, current_pnl_pct):
-        """Check trailing stop conditions"""
-        direction = self.trade_stats['direction']
-        current_price = candle['close']
+    def _check_trailing_stop(
+        self,
+        candle: Dict[str, Any],
+        current_pnl_pct: float
+    ) -> Optional[str]:
+        """
+        Check trailing stop conditions.
+        
+        Args:
+            candle: Current candle data
+            current_pnl_pct: Current profit/loss percentage
+            
+        Returns:
+            Exit reason string or None
+        """
+        direction: str = self.trade_stats['direction']
+        current_price: float = candle['close']
         
         # Only activate trailing stop after certain profit
         if abs(current_pnl_pct) < self.config['trailing_stop_activation'] * 100:
@@ -239,7 +320,7 @@ class TradeObserver:
         # Calculate trailing stop level
         if direction == 'BUY':
             # For BUY, trailing stop is below highest price
-            trail_stop_price = self.trade_stats['highest_price'] * (1 - self.config['trailing_stop_distance'])
+            trail_stop_price: float = self.trade_stats['highest_price'] * (1 - self.config['trailing_stop_distance'])
             if current_price <= trail_stop_price:
                 return f"Trailing stop hit ({current_pnl_pct:.2f}% profit)"
         else:  # SELL
@@ -250,13 +331,18 @@ class TradeObserver:
         
         return None
     
-    def get_trade_stats(self):
-        """Get current trade statistics"""
+    def get_trade_stats(self) -> Dict[str, Any]:
+        """
+        Get current trade statistics.
+        
+        Returns:
+            Copy of trade statistics dictionary
+        """
         return self.trade_stats.copy()
 
 
 # Test function - FIXED VERSION
-def test_observer():
+def test_observer() -> None:
     """Test observer functionality"""
     print("🧪 Testing Trade Observer")
     print("=" * 50)

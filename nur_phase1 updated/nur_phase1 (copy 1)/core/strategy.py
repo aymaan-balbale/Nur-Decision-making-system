@@ -1,7 +1,15 @@
 #!/usr/bin/env python3
 """
 Nur Trading Strategy - 200 EMA Crossover with Candle-Close Logic
+
+Implements the exact 200 EMA crossover strategy:
+- BUY when candle closes above EMA200 AND previous candle closed below
+- SELL when candle closes below EMA200 AND previous candle closed above
+- Uses wait_for_close=True (no repainting)
 """
+
+from typing import Optional, Dict, Any
+
 
 class TradingStrategy:
     """
@@ -15,7 +23,10 @@ class TradingStrategy:
     """
     
     @staticmethod
-    def check_buy_signal(current_candle, previous_candle):
+    def check_buy_signal(
+        current_candle: Optional[Dict[str, Any]], 
+        previous_candle: Optional[Dict[str, Any]]
+    ) -> bool:
         """
         Check if BUY signal is triggered.
         
@@ -33,21 +44,21 @@ class TradingStrategy:
         if current_candle.get('ema_200') is None or previous_candle.get('ema_200') is None:
             return False
         
-        current_close = current_candle['close']
-        current_ema = current_candle['ema_200']
-        prev_close = previous_candle['close']
-        prev_ema = previous_candle['ema_200']
+        current_close: float = current_candle['close']
+        current_ema: float = current_candle['ema_200']
+        prev_close: float = previous_candle['close']
+        prev_ema: float = previous_candle['ema_200']
         
         # Check if current candle closes above EMA
-        closes_above = current_close > current_ema
+        closes_above: bool = current_close > current_ema
         
         # Check if previous candle was below or touching EMA
         # "Touching" means within 0.5 pips (0.05 for XAUUSD)
-        touching_threshold = 0.05
-        prev_below_or_touching = prev_close <= (prev_ema + touching_threshold)
+        touching_threshold: float = 0.05
+        prev_below_or_touching: bool = prev_close <= (prev_ema + touching_threshold)
         
         # Both conditions must be true
-        buy_signal = closes_above and prev_below_or_touching
+        buy_signal: bool = closes_above and prev_below_or_touching
         
         if buy_signal:
             print(f"📈 BUY Signal: {current_close:.2f} > {current_ema:.2f} "
@@ -56,7 +67,10 @@ class TradingStrategy:
         return buy_signal
     
     @staticmethod
-    def check_sell_signal(current_candle, previous_candle):
+    def check_sell_signal(
+        current_candle: Optional[Dict[str, Any]], 
+        previous_candle: Optional[Dict[str, Any]]
+    ) -> bool:
         """
         Check if SELL signal is triggered.
         
@@ -74,20 +88,20 @@ class TradingStrategy:
         if current_candle.get('ema_200') is None or previous_candle.get('ema_200') is None:
             return False
         
-        current_close = current_candle['close']
-        current_ema = current_candle['ema_200']
-        prev_close = previous_candle['close']
-        prev_ema = previous_candle['ema_200']
+        current_close: float = current_candle['close']
+        current_ema: float = current_candle['ema_200']
+        prev_close: float = previous_candle['close']
+        prev_ema: float = previous_candle['ema_200']
         
         # Check if current candle closes below EMA
-        closes_below = current_close < current_ema
+        closes_below: bool = current_close < current_ema
         
         # Check if previous candle was above or touching EMA
-        touching_threshold = 0.05
-        prev_above_or_touching = prev_close >= (prev_ema - touching_threshold)
+        touching_threshold: float = 0.05
+        prev_above_or_touching: bool = prev_close >= (prev_ema - touching_threshold)
         
         # Both conditions must be true
-        sell_signal = closes_below and prev_above_or_touching
+        sell_signal: bool = closes_below and prev_above_or_touching
         
         if sell_signal:
             print(f"📉 SELL Signal: {current_close:.2f} < {current_ema:.2f} "
@@ -96,9 +110,16 @@ class TradingStrategy:
         return sell_signal
     
     @staticmethod
-    def get_signal(current_candle, previous_candle):
+    def get_signal(
+        current_candle: Optional[Dict[str, Any]], 
+        previous_candle: Optional[Dict[str, Any]]
+    ) -> str:
         """
         Get trading signal (BUY, SELL, or HOLD).
+        
+        Args:
+            current_candle: Current candle data
+            previous_candle: Previous candle data
         
         Returns:
             str: 'BUY', 'SELL', or 'HOLD'
@@ -112,7 +133,7 @@ class TradingStrategy:
 
 
 # Test the strategy
-def test_strategy():
+def test_strategy() -> None:
     """Test the strategy logic with sample data"""
     print("🧪 Testing Strategy Logic")
     print("=" * 50)
