@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.pyc
+
+# MT5 runtime files
+command.txt
+trades.csv
+
+# Logs / env
+*.log
+.env
