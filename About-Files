@@ -1,0 +1,262 @@
+# Top-Level Scripts & Utilities 🔧
+
+## main.py
+Entry point / quick-run script. Orchestrates running backtests or demos and contains the standard  
+`if __name__ == "__main__":` guard.  
+Use this for ad-hoc execution and sanity checks.
+
+## run_simple_backtest.py
+Convenience script to run a lightweight backtest via `simple_backtest()`, parse results, and print a clean summary.  
+Good for quick validation without digging into engines.
+
+## optimize_strategy.py
+Parameter optimization tooling.  
+Runs many backtests to search for optimal strategy parameters.  
+Core functions: `optimize_parameters()` with CLI support.
+
+## integrate_learning.py
+Bridges learning with backtesting.
+- Defines `LearningBacktestEngine` (extends the fixed engine).
+- Converts backtest outcomes into learning rewards.
+- Handles training steps, test runs, and result export/printing.
+
+## analyze_performance.py
+Post-backtest analysis layer.
+- Computes metrics.
+- Produces recommendations to improve performance.
+- Core entry: `analyze_and_improve()`.
+
+## verify_data.py
+Validates input data format (MT5-style CSV).
+- `verify_mt5_format()` for structure checks.
+- Includes a small CLI for quick validation runs.
+
+## validate_phase1.py
+Comprehensive Phase-1 validation suite.
+- `comprehensive_validation()` bundles multiple checks.
+- Outputs a consolidated report of system readiness.
+
+## phase1_summary.py
+Phase-1 summary/report generator.
+Aggregates results into a human-readable summary.
+
+## setup_environment.sh
+Shell-based environment setup script.
+Useful on Linux/macOS for dependency installation and environment prep.
+
+## requirements.txt
+Python package dependencies for the entire project.
+
+---
+
+# Tests and QA 🔍
+
+## Phase & Setup Tests
+- `test_phase2_setup.py`
+- `test_phase2_complete.py`
+
+Unit and smoke tests verifying imports, core components (learner, chat, etc.), and Phase-2 readiness.  
+Includes helper checks for basic behavior.
+
+## Focused Tests
+- `test_real_signals.py`
+- `test_data.py`
+- `test_imports.py`
+- `test_chat_fix.py`
+- `test_phase2_complete.py`
+
+Each test targets a specific subsystem: data handling, signal generation, imports, or chat fixes.  
+All include `if __name__ == "__main__":` for interactive execution.
+
+**Note**  
+`verify_data.py` and `validate_phase1.py` also serve validation roles similar to tests.
+
+---
+
+# backtest/ — Backtesting Engines 🧪
+
+## engine.py
+Older / general MT5-style utilities.
+Provides low-level helpers:
+- `mt5_init()`
+- `get_price()`
+- `calculate_ema()`
+- Lightweight position/order stubs
+
+## engine_simple.py
+Simplified backtest engine.
+- `SimpleBacktestEngine`
+- `run()` iterates candles and applies strategy logic
+Ideal for fast experiments.
+
+## engine_fixed.py
+Primary deterministic backtest engine (`FixedBacktestEngine`).
+
+Responsibilities:
+- Load MT5-style CSV data
+- Walk through candles deterministically
+- Enter and exit trades (`_enter_trade()`, `_close_trade()`)
+- Aggregate and print results (`print_results()`)
+- Analyze exit reasons and compute metrics
+
+---
+
+# core/ — Core Trading Logic & Components 🔁
+
+## market.py
+`MT5MarketData` wrapper.
+- Loads CSV into DataFrame
+- Calculates indicators (EMA)
+- Provides indexed candle access
+
+## ema_strategy.py
+`EMAStrategy` implementation.
+- Price vs EMA entry rules
+- Exit rules
+- Helper `should_exit_early()`
+This is where signal logic actually lives.
+
+## strategy.py
+High-level `TradingStrategy` abstraction.
+- Combines EMA logic
+- Determines buy/sell signals and reasons
+- Key methods: `get_signal()`, `get_reason()`
+
+## observer.py
+`TradeObserver` handles exit logic:
+- EMA crossbacks
+- Strong opposite candles
+- Trailing stops
+- Time-based exits
+- Stall detection  
+`update()` evaluates trades candle-by-candle and reports stats.
+
+## risk_manager.py
+`RiskManager` for money management.
+- Position sizing
+- Stop-loss / take-profit calculation
+- Helper test functions
+Central authority for risk logic.
+
+## tracker.py
+`TradeTracker` for logging and analytics.
+- Logs trades to CSV (`trades_log.csv` by default)
+- Stores stats and summaries
+- Exports detailed analysis to JSON  
+Key methods: `start_trade()`, `update_trade()`, `close_trade()`, `get_statistics()`.
+
+## learner.py
+`NurLearner` — reinforcement-learning-like component.
+
+Capabilities:
+- State building (`get_state()`)
+- Policy decisions (`get_action()`)
+- Learning updates (`update()`)
+- Batch learning (`_batch_learn()`)
+- State pruning (`_prune_states()`)
+- Save/load learned states
+- Recommendations (`get_recommendation()`)
+
+Includes `test_learner()` and a CLI driver.
+
+---
+
+# data/ — Data Helpers & Generators 📈
+
+## generate_mt5_data.py
+Synthetic MT5-format data generator.
+- `generate_xauusd_data()`
+- `save_mt5_format()`
+- `main()` for CSV generation
+
+## view_data.py / quick_view.py
+Visualization helpers.
+Used to inspect candles or generate quick dataset summaries before backtesting.
+
+## sample_mt5_format.txt, historical_xauusd_m1.csv
+Example input files.
+Useful for validating ingestion and testing pipelines.
+
+---
+
+# live/ — Live Connectivity (MT5 Bridge) ⚡
+
+## mt5_bridge.py
+`MT5Bridge` class wrapping live MT5 connectivity.
+
+Features:
+- Credential loading
+- Connect / disconnect
+- Connection checks
+- Market data access
+- Order placement and position management
+- Account info retrieval
+
+Includes:
+- `print_stats()`
+- `test_mt5_bridge()` for manual verification
+
+---
+
+# bridge/ — Messaging / File-Based MT5 Bridge 🔗
+
+## bridge.py
+File-based or socket-based messaging utilities.
+Used when direct MT5 API access is unavailable.
+
+Functions:
+- `_initialize_mt5()`
+- `wait_for_market()`
+- `read_market()`
+- `send_command()`
+- `read_trade_exit()`
+
+---
+
+# chat/ — Placeholder 💬
+Chat directory exists but currently contains placeholders or small utilities.  
+No core logic implemented here yet.
+
+---
+
+# logs/ — Outputs & Artifacts 📁
+Stores CSV and JSON outputs from tests and backtests:
+- `engine_test.csv`
+- `fixed_backtest.csv`
+- `simple_backtest.csv`
+- `trades_log.csv`
+- `test_report.json`
+
+Used by analysis and reporting tools.
+
+---
+
+# Utility Scripts & Small Modules 👀
+
+## bot_engine.py
+Early-stage helper utilities for live bot logic:
+- EMA calculations
+- Order stubs
+- Trailing SL helpers
+
+## debug_rr.py, fix_rr_display.py
+Debugging and display utilities.
+Special-purpose scripts for visualization or fixing output issues.
+
+## test_chat_fix.py
+Focused test script for chat-related fixes.
+
+---
+
+# Where to Start — Quick Suggestions 💡
+
+If you want to understand the system without drowning:
+
+1. `ema_strategy.py` — entry and exit rules 🔎  
+2. `engine_fixed.py` — execution and bookkeeping 🔁  
+3. `tracker.py` and `observer.py` — logging and exit heuristics 🧾  
+4. `learner.py` — learning integration 🧠  
+
+For quick experiments:
+- Use `run_simple_backtest.py`
+- Or call `run_fixed_backtest()` from `engine_fixed.py`
