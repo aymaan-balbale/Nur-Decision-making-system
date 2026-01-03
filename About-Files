@@ -291,3 +291,4 @@ For quick experiments:
 - Or call `run_fixed_backtest()` from `engine_fixed.py`
 
 
+Note: Entry points for experimentation are main.py and run_simple_backtest.py. For production-like backtests check backtest/engine_fixed.py. Tests (test_*.py) are the fastest way to verify function behavior.
