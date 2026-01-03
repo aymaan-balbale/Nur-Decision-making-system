@@ -248,6 +248,35 @@ Focused test script for chat-related fixes.
 
 ---
 
+## Additional Files & Utilities
+
+### ema200.py
+Small experimental or standalone script focused on **EMA-200–based signals**.  
+Used for quick strategy tests, signal validation, or isolated EMA logic experiments without running the full engine.
+
+### read_market.py
+Utility functions to read market CSV files and load them into:
+- Pandas DataFrames, or
+- A standardized market data object used across the project.
+
+Commonly used for quick inspections, debugging, or preprocessing.
+
+### market_copy.csv
+Example or backup market data file.  
+Used for:
+- Tests
+- Quick local runs
+- Data format validation when MT5 exports are unavailable
+
+### README.md
+Project overview and primary documentation.
+Includes:
+- High-level architecture
+- Setup instructions
+- Usage examples
+- Notes on backtesting vs live trading
+
+
 # Where to Start — Quick Suggestions 💡
 
 If you want to understand the system without drowning:
@@ -260,3 +289,5 @@ If you want to understand the system without drowning:
 For quick experiments:
 - Use `run_simple_backtest.py`
 - Or call `run_fixed_backtest()` from `engine_fixed.py`
+
+
